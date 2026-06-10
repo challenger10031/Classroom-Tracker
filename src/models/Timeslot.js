@@ -1,10 +1,20 @@
+const { pool } = require('../database/db');
+
 class Timeslot {
-  constructor({ timeslot_id, slot_no, start_time, end_time }) {
-    this.timeslot_id = timeslot_id;
-    this.slot_no = slot_no;
-    this.start_time = start_time;
-    this.end_time = end_time;
-  }
+    static async findAll() {
+        const [rows] = await pool.execute(
+            'SELECT timeslot_id, slot_no, start_time, end_time FROM timeslots ORDER BY slot_no'
+        );
+        return rows;
+    }
+
+    static async findById(timeslotId) {
+        const [rows] = await pool.execute(
+            'SELECT timeslot_id, slot_no, start_time, end_time FROM timeslots WHERE timeslot_id = ?',
+            [timeslotId]
+        );
+        return rows[0];
+    }
 }
 
 module.exports = Timeslot;

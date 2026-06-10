@@ -1,43 +1,96 @@
-// login.js - handles login form POST to API
-document.addEventListener('DOMContentLoaded', () => {
-	const form = document.getElementById('login-form');
-	const errEl = document.getElementById('error');
-	if (!form) return;
+const API_BASE_URL = window.location.origin;
 
-	form.addEventListener('submit', async (e) => {
-		e.preventDefault();
-		errEl.textContent = '';
-		const email = document.getElementById('email').value.trim();
-		const password = document.getElementById('password').value;
-		try {
-			const res = await fetch('/api/auth/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email, password })
-			});
-			const data = await res.json();
-			if (!res.ok) {
-				errEl.textContent = data.message || data.error || 'Login failed';
-				return;
-			}
+async function submitLogin(email, password) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Login failed');
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('Login error:', error);
+        throw error;
+    }
+}
 
-			// Save token and user info
-			if (data.token) localStorage.setItem('token', data.token);
-			if (data.user && data.user.role) localStorage.setItem('role', data.user.role);
+function storeToken(token, userData) {
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('userData', JSON.stringify(userData));
+}
 
-			// Redirect based on role
-			const role = data.user && data.user.role;
-			if (role === 'teacher') {
-				window.location.href = '/pages/teacherDashboard.html';
-			} else if (role === 'student') {
-				window.location.href = '/pages/studentDashboard.html';
-			} else {
-				// default to schedule or dashboard
-				window.location.href = '/pages/studentDashboard.html';
-			}
-		} catch (err) {
-			console.error(err);
-			errEl.textContent = 'Network error, try again.';
-		}
-	});
+function redirectUser(role) {
+    if (role === 'student') {
+        window.location.href = '/pages/studentDashboard.html';
+    } else if (role === 'teacher') {
+        window.location.href = '/pages/teacherDashboard.html';
+    } else if (role === 'admin') {
+        window.location.href = '/pages/adminDashboard.html';
+    }
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+// Handle login form submission
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    // Disable submit button during request
+    const submitBtn = document.querySelector('.login-btn');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Logging in...';
+    submitBtn.disabled = true;
+    
+    try {
+        const result = await submitLogin(email, password);
+        
+        if (result.success && result.token) {
+            storeToken(result.token, result.user);
+            redirectUser(result.user.role);
+        } else {
+            showError('Invalid response from server');
+        }
+    } catch (error) {
+        showError(error.message || 'Login failed. Please check your credentials.');
+    } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+    }
 });
+
+// Check if user is already logged in
+function checkExistingSession() {
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('userData');
+    
+    if (token && userData) {
+        try {
+            const user = JSON.parse(userData);
+            redirectUser(user.role);
+        } catch (e) {
+            localStorage.clear();
+        }
+    }
+}
+
+checkExistingSession();

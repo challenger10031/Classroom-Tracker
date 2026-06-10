@@ -1,30 +1,34 @@
 const express = require('express');
-require('dotenv').config();
 const path = require('path');
+const cors = require('cors');
+require('dotenv').config();
 
-const studentsRouter = require('./routes/students');
-const authRouter = require('./routes/authRoutes');
-const scheduleRouter = require('./routes/scheduleRoutes');
+const authRoutes = require('./routes/authRoutes');
+const scheduleRoutes = require('./routes/scheduleRoutes');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Serve static public files
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, '../public')));
 
-// API routes
-app.use('/api/students', studentsRouter);
-app.use('/api/auth', authRouter);
-app.use('/api/schedules', scheduleRouter);
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api', scheduleRoutes);
 
-app.get('/api', (req, res) => res.json({ ok: true, message: 'Classroom Tracker API' }));
-
-// root serve login page by default
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'pages', 'login.html')));
-
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+// Handle SPA routing - serve index.html for non-API routes
+app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(__dirname, '../public/pages/login.html'));
+    }
 });
 
-module.exports = app;
+// Start server
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});

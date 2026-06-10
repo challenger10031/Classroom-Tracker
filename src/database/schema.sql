@@ -105,14 +105,14 @@ CREATE TABLE IF NOT EXISTS schedules (
 );
 
 -- INDEXES
-CREATE INDEX IF NOT EXISTS idx_schedule_date ON schedules(schedule_date);
-CREATE INDEX IF NOT EXISTS idx_schedule_course ON schedules(course_id);
-CREATE INDEX IF NOT EXISTS idx_schedule_timeslot ON schedules(timeslot_id);
-CREATE INDEX IF NOT EXISTS idx_schedule_room ON schedules(classroom_id);
+CREATE INDEX idx_schedule_date ON schedules(schedule_date);
+CREATE INDEX idx_schedule_course ON schedules(course_id);
+CREATE INDEX idx_schedule_timeslot ON schedules(timeslot_id);
+CREATE INDEX idx_schedule_room ON schedules(classroom_id);
 
 -- CONFLICT PREVENTION
 ALTER TABLE schedules
-ADD CONSTRAINT IF NOT EXISTS unique_room_slot
+ADD CONSTRAINT unique_room_slot
 UNIQUE (classroom_id, schedule_date, timeslot_id);
 
 -- DEFAULT TIMESLOTS (upsert style)

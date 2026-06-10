@@ -1,5 +1,5 @@
 require('dotenv').config();
-const pool = require('./database/db');
+const { pool } = require('./database/db');
 
 (async () => {
   try {

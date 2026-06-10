@@ -1,8 +1,9 @@
 const express = require('express');
+const { login } = require('../controllers/authController');
+
 const router = express.Router();
 
-// Placeholder auth routes
-router.post('/login', (req, res) => res.json({ ok: true, message: 'login placeholder' }));
-router.post('/register', (req, res) => res.json({ ok: true, message: 'register placeholder' }));
+// POST /api/auth/login
+router.post('/login', login);
 
 module.exports = router;
