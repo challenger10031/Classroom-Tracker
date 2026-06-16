@@ -4,6 +4,8 @@ const Course = require('../models/Course');
 const Schedule = require('../models/Schedule');
 const Timeslot = require('../models/Timeslot');
 const Classroom = require('../models/Classroom');
+const Batch = require('../models/Batch');
+
 
 // Get current date in Bangladesh timezone (UTC+6) as YYYY-MM-DD
 function getCurrentDateInBD() {
@@ -283,14 +285,19 @@ async function getAdminDashboardData() {
 }
 
 async function validateSchedule(scheduleData) {
-    const { courseId, classroomId, timeslotId, scheduleDate, teacherId } = scheduleData;
-    
+    const { courseId, classroomId, timeslotId, scheduleDate, userId } = scheduleData;
+    //console.table(scheduleData);
     const course = await Course.findById(courseId);
+    const teacher = await Teacher.findByUserId(userId);
+    console.table(teacher);
+    
     if (!course) {
         throw new Error('Course not found');
     }
     
-    if (course.teacher_id !== parseInt(teacherId)) {
+    if (parseInt(course.teacher_id) !== parseInt(teacher.teacher_id)) {
+        console.table(scheduleData);
+        console.table(course);
         throw new Error('You are not authorized to schedule this course');
     }
     
@@ -304,7 +311,7 @@ async function validateSchedule(scheduleData) {
         throw new Error('Classroom is already booked for this time slot');
     }
     
-    const teacherConflict = await Schedule.findTeacherConflict(teacherId, scheduleDate, timeslotId);
+    const teacherConflict = await Schedule.findTeacherConflict(teacher.teacher_id, scheduleDate, timeslotId);
     if (teacherConflict) {
         throw new Error('You already have a class scheduled at this time');
     }
@@ -323,7 +330,22 @@ async function createSchedule(scheduleData) {
     return scheduleId;
 }
 
-async function cancelSchedule(scheduleId) {
+async function cancelSchedule(scheduleId, userId) {
+    // Add validation to ensure the user is the owner of the schedule
+    const schedule = await Schedule.findById(scheduleId);
+    const teacher = await Teacher.findByUserId(userId);
+    const course = await Course.findById(schedule.course_id);
+    if (!schedule || course.teacher_id !== teacher.teacher_id) {
+        throw new Error('You are not authorized to cancel this schedule');
+    }
+
+    // Check if the schedule date is in the past
+    const currentDate = getCurrentDateInBD();
+    const scheduleDateStr = toDateString(schedule.schedule_date);
+    if (scheduleDateStr < currentDate) {
+        throw new Error('Cannot cancel past schedules');
+    }
+
     return await Schedule.cancel(scheduleId);
 }
 

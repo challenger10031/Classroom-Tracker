@@ -5,99 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Teacher Dashboard - EduFlow</title>
     <link rel="stylesheet" href="../css/dashboard.css">
-    <style>
-        .user-info {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-        .user-info h3 {
-            margin: 0 0 5px 0;
-        }
-        .user-info p {
-            margin: 0;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-        .schedule-btn {
-            background: #11998e;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 15px;
-            width: 100%;
-        }
-        .schedule-btn:hover {
-            background: #0e7a6e;
-        }
-        .modal {
-            display: block;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        .modal-content {
-            background-color: white;
-            margin: 10% auto;
-            padding: 25px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            position: relative;
-        }
-        .close {
-            position: absolute;
-            right: 20px;
-            top: 15px;
-            font-size: 24px;
-            cursor: pointer;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-        }
-        .modal-content button {
-            background: #11998e;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
-        }
-        .error-toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #f44336;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            z-index: 1000;
-        }
-    </style>
 </head>
 <body>
     <div class="app-container">
-        <div class="top-nav">
+        <!-- Top Navigation -->
+        <nav class="top-nav">
             <div class="logo-area">
                 <h2>📚 EduFlow</h2>
                 <span>Teacher Portal</span>
@@ -106,11 +18,12 @@
                 <a href="#">Dashboard</a>
                 <a href="#">My Courses</a>
                 <a href="#">Schedule</a>
-                <a href="#" onclick="logout()" class="logout-btn">Logout</a>
+                <span onclick="logout()" class="logout-btn">Logout</span>
             </div>
-        </div>
+        </nav>
 
-        <div class="dashboard-header">
+        <!-- Dashboard Header -->
+        <header class="dashboard-header">
             <div class="header-info">
                 <div class="role-badge">👨‍🏫 Teacher</div>
                 <div class="date-box" id="currentDate"></div>
@@ -119,34 +32,37 @@
                 <input type="text" id="searchFilter" placeholder="🔍 Search course or room...">
             </div>
             <button class="schedule-class-btn" onclick="openScheduleModalForToday()">+ Schedule Class</button>
-        </div>
+        </header>
 
-        <div class="user-info">
+        <!-- User Info -->
+        <div class="user-info teacher">
             <h3 id="userName">Loading...</h3>
             <p>Department: <span id="userDepartment">-</span></p>
         </div>
 
+        <!-- Main Content -->
         <div class="dashboard-main">
+            <!-- Schedule Grid -->
             <div class="schedule-wrapper">
                 <div class="schedule-grid-container">
                     <table class="schedule-table">
                         <thead id="tableHeader">
                             <tr>
                                 <th>Date</th>
-                                <!-- Header will be dynamically populated by JavaScript -->
                             </tr>
                         </thead>
                         <tbody id="scheduleBody">
-                            <tr><td colspan="6" style="text-align: center;">Loading schedule...</td></tr>
+                            <tr><td colspan="6" style="text-align: center; padding: 40px;">Loading schedule...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
+            <!-- Details Panel -->
             <div class="details-panel">
                 <h3>📋 Class Details</h3>
                 <div id="detailsContent">
-                    <div class="no-selection">✨ Select a class to view details</div>
+                    <div class="no-selection">✨ Select a class<br>to view details</div>
                 </div>
             </div>
         </div>

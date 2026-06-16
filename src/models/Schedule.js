@@ -90,6 +90,14 @@ class Schedule {
         return rows[0];
     }
 
+    // Get schedule by ID
+    static async findById(scheduleId) {
+        const [rows] = await pool.execute(`
+            SELECT * FROM schedules WHERE schedule_id = ?
+        `, [scheduleId]);
+        return rows[0];
+    }
+
     // Create new schedule
     static async create(scheduleData) {
         const { courseId, classroomId, timeslotId, scheduleDate } = scheduleData;

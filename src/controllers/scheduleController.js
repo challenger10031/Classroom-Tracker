@@ -71,7 +71,7 @@ async function getSchedulingData(req, res) {
 async function createSchedule(req, res) {
     try {
         const { courseId, classroomId, timeslotId, scheduleDate } = req.body;
-        const teacherId = req.userId;
+        const userId = req.userId;
         
         // Validate required fields
         if (!courseId || !classroomId || !timeslotId || !scheduleDate) {
@@ -86,7 +86,7 @@ async function createSchedule(req, res) {
             classroomId,
             timeslotId,
             scheduleDate,
-            teacherId
+            userId
         });
         
         res.json({
@@ -106,7 +106,9 @@ async function createSchedule(req, res) {
 async function cancelSchedule(req, res) {
     try {
         const scheduleId = req.params.id;
-        const result = await scheduleService.cancelSchedule(scheduleId);
+        const userId = req.userId;
+        
+        const result = await scheduleService.cancelSchedule(scheduleId, userId);
         
         if (result) {
             res.json({
