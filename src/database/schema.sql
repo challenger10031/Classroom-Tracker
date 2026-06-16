@@ -116,9 +116,12 @@ ADD CONSTRAINT unique_room_slot
 UNIQUE (classroom_id, schedule_date, timeslot_id);
 
 -- DEFAULT TIMESLOTS (upsert style)
-INSERT INTO timeslots (slot_no, start_time, end_time)
-VALUES
+INSERT INTO timeslots (slot_no, start_time, end_time) VALUES
 (1, '08:30:00', '10:00:00'),
 (2, '10:00:00', '11:30:00'),
-(3, '11:30:00', '01:00:00')
-ON DUPLICATE KEY UPDATE start_time = VALUES(start_time), end_time = VALUES(end_time);
+(3, '11:30:00', '13:00:00'),
+(4, '14:00:00', '15:30:00'),   -- New
+(5, '15:30:00', '16:45:00')    -- New
+ON DUPLICATE KEY UPDATE 
+    start_time = VALUES(start_time), 
+    end_time = VALUES(end_time);

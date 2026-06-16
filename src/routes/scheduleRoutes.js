@@ -3,7 +3,7 @@ const { authenticate } = require('../middleware/authMiddleware');
 const { teacherOnly } = require('../middleware/roleMiddleware');
 const { 
     getDashboard, 
-    getSchedulingData, 
+    getSchedulingData,
     createSchedule, 
     cancelSchedule 
 } = require('../controllers/scheduleController');
@@ -13,16 +13,16 @@ const router = express.Router();
 // All schedule routes require authentication
 router.use(authenticate);
 
-// GET /api/dashboard - Get dashboard data for current user
+// GET /api/schedule/dashboard - Get dashboard data based on role
 router.get('/dashboard', getDashboard);
 
-// GET /api/schedule-data - Get all data needed for scheduling (courses, rooms, timeslots)
-router.get('/schedule-data', getSchedulingData);
+// GET /api/schedule/scheduling-data - Get data for scheduling (teachers only)
+router.get('/scheduling-data', teacherOnly, getSchedulingData);
 
-// POST /api/schedule - Create a new schedule (teachers only)
-router.post('/schedule', teacherOnly, createSchedule);
+// POST /api/schedule/create - Create new schedule (teachers only)
+router.post('/create', teacherOnly, createSchedule);
 
-// PATCH /api/schedule/:id/cancel - Cancel a schedule (teachers only)
-router.patch('/schedule/:id/cancel', teacherOnly, cancelSchedule);
+// DELETE /api/schedule/:id/cancel - Cancel a schedule (teachers only)
+router.delete('/:id/cancel', teacherOnly, cancelSchedule);
 
 module.exports = router;

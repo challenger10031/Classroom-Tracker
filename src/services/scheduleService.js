@@ -1,106 +1,343 @@
-const Schedule = require('../models/Schedule');
+const Student = require('../models/Student');
+const Teacher = require('../models/Teacher');
 const Course = require('../models/Course');
-const Classroom = require('../models/Classroom');
+const Schedule = require('../models/Schedule');
 const Timeslot = require('../models/Timeslot');
-const Semester = require('../models/Semester');
+const Classroom = require('../models/Classroom');
 
-async function getDashboardData(userId, role) {
-    let schedules;
-    
-    if (role === 'student') {
-        const semester = await Semester.getCurrent();
-        schedules = await Schedule.findStudentSchedules(semester?.semester_id, userId);
-    } else if (role === 'teacher') {
-        schedules = await Schedule.findTeacherSchedules(userId);
-    } else {
-        schedules = await Schedule.findFutureSchedules(30);
-    }
-    
-    const timeslots = await Timeslot.findAll();
-    const classrooms = await Classroom.findAll();
-    
-    return {
-        schedules,
-        timeslots,
-        classrooms,
-        role
-    };
+// Get current date in Bangladesh timezone (UTC+6) as YYYY-MM-DD
+function getCurrentDateInBD() {
+    const now = new Date();
+    // Convert to Bangladesh time (UTC+6)
+    const bdTime = new Date(now.getTime() + (6 * 60 * 60 * 1000));
+    return bdTime.toISOString().split('T')[0];
 }
 
-async function getSchedulingData() {
-    const courses = await Course.getAll();
-    const classrooms = await Classroom.findAll();
-    const timeslots = await Timeslot.findAll();
+// Format time to 12-hour format
+function formatTime(time) {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+}
+
+// Convert date to YYYY-MM-DD format for comparison
+function toDateString(date) {
+    if (!date) return null;
+    const d = new Date(date);
+    return d.toISOString().split('T')[0];
+}
+
+// Filter schedules to only include today and future dates
+function filterTodayAndFutureSchedules(schedules, currentDate) {
+    if (!schedules || schedules.length === 0) return [];
     
-    return {
-        courses,
-        classrooms,
-        timeslots
-    };
+    console.log('Filtering schedules with current date:', currentDate);
+    
+    return schedules.filter(schedule => {
+        const scheduleDateStr = toDateString(schedule.schedule_date);
+        return scheduleDateStr >= currentDate;
+    });
+}
+
+// Group schedules by date - stores schedules in a map by date
+function groupSchedulesByDate(schedules) {
+    const schedulesByDate = {};
+    
+    schedules.forEach(schedule => {
+        const date = toDateString(schedule.schedule_date);
+        const slotNo = schedule.slot_no;
+        
+        if (!schedulesByDate[date]) {
+            schedulesByDate[date] = {};
+        }
+        
+        schedulesByDate[date][slotNo] = {
+            scheduleId: schedule.schedule_id,
+            courseId: schedule.course_id,
+            courseCode: schedule.course_code,
+            courseTitle: schedule.course_title,
+            roomNumber: schedule.room_number,
+            teacherName: schedule.teacher_name || schedule.teacherName,
+            startTime: formatTime(schedule.start_time),
+            endTime: formatTime(schedule.end_time),
+            semester: schedule.semester_no
+        };
+    });
+    
+    return schedulesByDate;
+}
+
+// Generate consecutive dates from startDate to endDate (30 days from start)
+function generateDateRange(startDate, numberOfDays = 30) {
+    const dates = [];
+    const start = new Date(startDate);
+    
+    for (let i = 0; i < numberOfDays; i++) {
+        const date = new Date(start);
+        date.setDate(date.getDate() + i);
+        dates.push(date.toISOString().split('T')[0]);
+    }
+    
+    return dates;
+}
+
+// Build grid data with all dates (including empty ones)
+function buildCompleteGridData(schedulesByDate, dateRange, timeslots) {
+    const gridData = [];
+    
+    dateRange.forEach(date => {
+        const row = {
+            date: date,
+            slots: {}
+        };
+        
+        // Initialize all slots as null
+        timeslots.forEach(slot => {
+            row.slots[slot.slot_no] = null;
+        });
+        
+        // Fill in occupied slots if they exist for this date
+        if (schedulesByDate[date]) {
+            Object.keys(schedulesByDate[date]).forEach(slotNo => {
+                row.slots[slotNo] = schedulesByDate[date][slotNo];
+            });
+        }
+        
+        gridData.push(row);
+    });
+    
+    return gridData;
+}
+
+async function getStudentDashboardData(userId) {
+    try {
+        // Get student info
+        const student = await Student.findByUserId(userId);
+        if (!student) {
+            throw new Error('Student not found');
+        }
+        
+        console.log('Student found:', student.student_name, 'Semester:', student.semester_id);
+        
+        // Get all schedules for student's semester
+        const allSchedules = await Schedule.findStudentSchedules(student.semester_id);
+        console.log('Total schedules found for semester:', allSchedules.length);
+        
+        // Get all timeslots
+        const timeslots = await Timeslot.findAll();
+        console.log('Timeslots found:', timeslots.length);
+        
+        // Get all classrooms
+        const classrooms = await Classroom.findAll();
+        console.log('Classrooms found:', classrooms.length);
+        
+        // Get courses for this semester
+        const courses = await Course.getCoursesBySemester(student.semester_id);
+        
+        // Get current date in Bangladesh timezone
+        const currentDate = getCurrentDateInBD();
+        console.log('Current date (BD):', currentDate);
+        
+        // Filter schedules to only today and future
+        const futureSchedules = filterTodayAndFutureSchedules(allSchedules, currentDate);
+        console.log('Future schedules (today onwards):', futureSchedules.length);
+        
+        // Group schedules by date
+        const schedulesByDate = groupSchedulesByDate(futureSchedules);
+        console.log('Dates with schedules:', Object.keys(schedulesByDate));
+        
+        // Generate date range (30 days from today)
+        const dateRange = generateDateRange(currentDate, 30);
+        console.log('Date range generated:', dateRange.length, 'days');
+        
+        // Build complete grid data with all dates
+        const gridData = buildCompleteGridData(schedulesByDate, dateRange, timeslots);
+        console.log('Grid data rows:', gridData.length);
+        
+        // Format timeslots for display
+        const formattedTimeslots = timeslots.map(ts => ({
+            timeslotId: ts.timeslot_id,
+            slotNo: ts.slot_no,
+            startTime: formatTime(ts.start_time),
+            endTime: formatTime(ts.end_time),
+            label: `${formatTime(ts.start_time)} - ${formatTime(ts.end_time)}`
+        }));
+        
+        return {
+            user: {
+                name: student.student_name,
+                rollNo: student.roll_no,
+                batch: student.batch_name,
+                semester: student.semester_no,
+                role: 'student'
+            },
+            gridData,
+            timeslots: formattedTimeslots,
+            classrooms,
+            courses,
+            currentDate
+        };
+    } catch (error) {
+        console.error('Error in getStudentDashboardData:', error);
+        throw error;
+    }
+}
+
+// Similar updates for getTeacherDashboardData and getAdminDashboardData...
+// (Apply the same pattern to these functions)
+
+async function getTeacherDashboardData(userId) {
+    try {
+        const teacher = await Teacher.findByUserId(userId);
+        if (!teacher) {
+            throw new Error('Teacher not found');
+        }
+        
+        console.log('Teacher found:', teacher.teacher_name);
+        
+        const allSchedules = await Schedule.findTeacherSchedules(teacher.teacher_id);
+        console.log('Total schedules found for teacher:', allSchedules.length);
+        
+        const timeslots = await Timeslot.findAll();
+        const classrooms = await Classroom.findAll();
+        const courses = await Teacher.findCourses(teacher.teacher_id);
+        
+        const currentDate = getCurrentDateInBD();
+        console.log('Current date (BD):', currentDate);
+        
+        const futureSchedules = filterTodayAndFutureSchedules(allSchedules, currentDate);
+        console.log('Future schedules (today onwards):', futureSchedules.length);
+        
+        const schedulesByDate = groupSchedulesByDate(futureSchedules);
+        const dateRange = generateDateRange(currentDate, 30);
+        const gridData = buildCompleteGridData(schedulesByDate, dateRange, timeslots);
+        
+        const formattedTimeslots = timeslots.map(ts => ({
+            timeslotId: ts.timeslot_id,
+            slotNo: ts.slot_no,
+            startTime: formatTime(ts.start_time),
+            endTime: formatTime(ts.end_time),
+            label: `${formatTime(ts.start_time)} - ${formatTime(ts.end_time)}`
+        }));
+        
+        return {
+            user: {
+                name: teacher.teacher_name,
+                department: teacher.department,
+                role: 'teacher'
+            },
+            gridData,
+            timeslots: formattedTimeslots,
+            classrooms,
+            courses,
+            currentDate
+        };
+    } catch (error) {
+        console.error('Error in getTeacherDashboardData:', error);
+        throw error;
+    }
+}
+
+async function getAdminDashboardData() {
+    try {
+        const allSchedules = await Schedule.findAllSchedules();
+        console.log('Total schedules found:', allSchedules.length);
+        
+        const timeslots = await Timeslot.findAll();
+        const classrooms = await Classroom.findAll();
+        
+        const currentDate = getCurrentDateInBD();
+        console.log('Current date (BD):', currentDate);
+        
+        const futureSchedules = filterTodayAndFutureSchedules(allSchedules, currentDate);
+        console.log('Future schedules (today onwards):', futureSchedules.length);
+        
+        const schedulesByDate = groupSchedulesByDate(futureSchedules);
+        const dateRange = generateDateRange(currentDate, 30);
+        const gridData = buildCompleteGridData(schedulesByDate, dateRange, timeslots);
+        
+        const formattedTimeslots = timeslots.map(ts => ({
+            timeslotId: ts.timeslot_id,
+            slotNo: ts.slot_no,
+            startTime: formatTime(ts.start_time),
+            endTime: formatTime(ts.end_time),
+            label: `${formatTime(ts.start_time)} - ${formatTime(ts.end_time)}`
+        }));
+        
+        return {
+            user: {
+                role: 'admin'
+            },
+            gridData,
+            timeslots: formattedTimeslots,
+            classrooms,
+            currentDate
+        };
+    } catch (error) {
+        console.error('Error in getAdminDashboardData:', error);
+        throw error;
+    }
 }
 
 async function validateSchedule(scheduleData) {
-    const { courseId, classroomId, timeslotId, scheduleDate } = scheduleData;
+    const { courseId, classroomId, timeslotId, scheduleDate, teacherId } = scheduleData;
     
-    // Get course details for teacher and semester info
     const course = await Course.findById(courseId);
     if (!course) {
         throw new Error('Course not found');
     }
     
-    // Check teacher conflict
-    const teacherConflict = await checkTeacherConflict(course.teacher_id, scheduleDate, timeslotId);
-    if (teacherConflict) {
-        throw new Error('Teacher has a scheduling conflict at this time');
+    if (course.teacher_id !== parseInt(teacherId)) {
+        throw new Error('You are not authorized to schedule this course');
     }
     
-    // Check semester conflict (for students - ensures no overlapping classes for same semester)
-    const semesterConflict = await checkSemesterConflict(course.semester_id, scheduleDate, timeslotId);
+    const currentDate = getCurrentDateInBD();
+    if (scheduleDate < currentDate) {
+        throw new Error('Cannot schedule classes in the past');
+    }
+    
+    const classroomConflict = await Schedule.findClassroomConflict(classroomId, scheduleDate, timeslotId);
+    if (classroomConflict) {
+        throw new Error('Classroom is already booked for this time slot');
+    }
+    
+    const teacherConflict = await Schedule.findTeacherConflict(teacherId, scheduleDate, timeslotId);
+    if (teacherConflict) {
+        throw new Error('You already have a class scheduled at this time');
+    }
+    
+    const semesterConflict = await Schedule.findSemesterConflict(course.semester_id, scheduleDate, timeslotId);
     if (semesterConflict) {
         throw new Error('A class for this semester is already scheduled at this time');
-    }
-    
-    // Check classroom conflict
-    const classroomConflict = await checkClassroomConflict(classroomId, scheduleDate, timeslotId);
-    if (classroomConflict) {
-        throw new Error('Classroom is already booked at this time');
     }
     
     return true;
 }
 
-async function checkTeacherConflict(teacherId, date, timeslotId) {
-    return await Schedule.findTeacherConflict(teacherId, date, timeslotId);
-}
-
-async function checkSemesterConflict(semesterId, date, timeslotId) {
-    return await Schedule.findSemesterConflict(semesterId, date, timeslotId);
-}
-
-async function checkClassroomConflict(classroomId, date, timeslotId) {
-    return await Schedule.findClassroomConflict(classroomId, date, timeslotId);
-}
-
 async function createSchedule(scheduleData) {
-    // Validate before creation
     await validateSchedule(scheduleData);
-    
     const scheduleId = await Schedule.create(scheduleData);
     return scheduleId;
 }
 
 async function cancelSchedule(scheduleId) {
-    const result = await Schedule.cancel(scheduleId);
-    return result;
+    return await Schedule.cancel(scheduleId);
 }
 
 module.exports = {
-    getDashboardData,
-    getSchedulingData,
+    getStudentDashboardData,
+    getTeacherDashboardData,
+    getAdminDashboardData,
     validateSchedule,
-    checkTeacherConflict,
-    checkSemesterConflict,
-    checkClassroomConflict,
     createSchedule,
-    cancelSchedule
+    cancelSchedule,
+    getCurrentDateInBD,
+    formatTime,
+    filterTodayAndFutureSchedules,
+    toDateString,
+    generateDateRange,
+    buildCompleteGridData
 };

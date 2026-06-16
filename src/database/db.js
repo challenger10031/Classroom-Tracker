@@ -6,6 +6,8 @@ const pool = mysql.createPool({
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'classroom_tracker',
+    timezone: '+06:00',  // Bangladesh timezone (UTC+6)
+    dateStrings: true,   // Return dates as strings
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0

@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api', scheduleRoutes);
+app.use('/api/schedule', scheduleRoutes);
 
 // Handle SPA routing - serve index.html for non-API routes
 app.get('*', (req, res) => {
